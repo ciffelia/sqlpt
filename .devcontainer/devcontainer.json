@@ -15,7 +15,6 @@
     "postgres:5432"
   ],
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/node:1": {
       "version": "22",
       "pnpmVersion": "10"

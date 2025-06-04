@@ -89,7 +89,19 @@ func WithTestDB(t *testing.T, testFunc TestFunc) {
 	if err != nil {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		done := make(chan struct{})
+		go func() {
+			pool.Close()
+			close(done)
+		}()
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Logf("warning: test %s held onto pool after exiting", t.Name())
+		case <-ctx.Done():
+		}
+	}()
 
 	// Run the test
 	testFunc(pool)

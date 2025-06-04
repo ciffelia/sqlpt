@@ -1,6 +1,7 @@
 package sqlpt_test
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/ciffelia/sqlpt"
@@ -10,21 +11,30 @@ import (
 func TestDifferentDatabase(t *testing.T) {
 	ctx := t.Context()
 
+	var wg sync.WaitGroup
 	var name1, name2 string
 
-	sqlpt.WithTestDB(t, func(pool *pgxpool.Pool) {
-		err := pool.QueryRow(ctx, "SELECT current_database()").Scan(&name1)
-		if err != nil {
-			t.Fatalf("failed to get current database name: %v", err)
-		}
+	wg.Add(2)
+	t.Run("test1", func(t *testing.T) {
+		sqlpt.WithTestDB(t, func(pool *pgxpool.Pool) {
+			err := pool.QueryRow(ctx, "SELECT current_database()").Scan(&name1)
+			if err != nil {
+				t.Fatalf("failed to get current database name: %v", err)
+			}
+			wg.Done()
+		})
 	})
-	sqlpt.WithTestDB(t, func(pool *pgxpool.Pool) {
-		err := pool.QueryRow(ctx, "SELECT current_database()").Scan(&name2)
-		if err != nil {
-			t.Fatalf("failed to get current database name: %v", err)
-		}
+	t.Run("test2", func(t *testing.T) {
+		sqlpt.WithTestDB(t, func(pool *pgxpool.Pool) {
+			err := pool.QueryRow(ctx, "SELECT current_database()").Scan(&name2)
+			if err != nil {
+				t.Fatalf("failed to get current database name: %v", err)
+			}
+			wg.Done()
+		})
 	})
 
+	wg.Wait()
 	if name1 == name2 {
 		t.Errorf("expected different database names, got %s and %s", name1, name2)
 	}

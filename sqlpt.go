@@ -5,7 +5,9 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -64,7 +66,7 @@ func WithTestDB(t *testing.T, testFunc TestFunc) {
 	}
 
 	// Generate unique database name based on test path
-	testPath := fmt.Sprintf("%s/%s", t.Name(), getTestPath())
+	testPath := fmt.Sprintf("%s/%s", getTestFuncId(), t.Name())
 	dbName := generateDBName(testPath)
 
 	// Setup test database
@@ -98,22 +100,17 @@ func WithTestDB(t *testing.T, testFunc TestFunc) {
 	}
 }
 
-// generateDBName generates a unique database name based on test path (mimics sqlx logic)
+// generateDBName generates a unique database name based on test path
 func generateDBName(testPath string) string {
-	hasher := sha512.New()
-	hasher.Write([]byte(testPath))
-	hash := hasher.Sum(nil)
+	println(testPath)
+	hash := sha512.Sum512([]byte(testPath))
 
-	// Use first 39 bytes to match sqlx behavior
 	encoded := base64.URLEncoding.EncodeToString(hash[:39])
 	dbName := fmt.Sprintf("_sqlx_test_%s", encoded)
-
-	// Replace dashes with underscores for PostgreSQL compatibility
 	dbName = strings.ReplaceAll(dbName, "-", "_")
 
-	// Ensure length is 63 characters (PostgreSQL identifier limit)
-	if len(dbName) > 63 {
-		dbName = dbName[:63]
+	if len(dbName) != 63 {
+		log.Fatalf("generated database name '%s' is not 63 characters long, got %d", dbName, len(dbName))
 	}
 
 	return dbName
@@ -201,9 +198,22 @@ func doCleanup(ctx context.Context, conn *pgx.Conn, dbName string) error {
 	return nil
 }
 
-// getTestPath returns a test path identifier (simplified version)
-func getTestPath() string {
-	// This is a simplified implementation. In a real scenario,
-	// you might want to extract more detailed path information
-	return "test"
+// getTestFuncId returns a test function identifier
+func getTestFuncId() string {
+	var prevFuncName string
+
+	for i := 1; ; i++ {
+		pc, _, _, ok := runtime.Caller(i)
+		if !ok {
+			break
+		}
+
+		funcName := runtime.FuncForPC(pc).Name()
+		if funcName == "testing.tRunner" {
+			break
+		}
+		prevFuncName = funcName
+	}
+
+	return prevFuncName
 }

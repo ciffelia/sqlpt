@@ -1,0 +1,15 @@
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/go:1-bookworm
+    command: sleep infinity
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
+    volumes:
+      - ..:/workspaces/sqlpt:cached
+
+  postgres:
+    image: postgres:17.5-alpine
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres

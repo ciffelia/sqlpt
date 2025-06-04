@@ -1,6 +1,8 @@
 {
   "name": "sqlpt",
-  "image": "mcr.microsoft.com/devcontainers/go:1-bookworm",
+	"dockerComposeFile": "compose.yaml",
+	"service": "app",
+  "workspaceFolder": "/workspaces/sqlpt",
   "containerEnv": {
     "GOTOOLCHAIN": "auto",
     // Persist bash history
@@ -9,6 +11,9 @@
     // Persist Claude Code config
     "CLAUDE_CONFIG_DIR": "${containerWorkspaceFolder}/.devcontainer/persist/.claude"
   },
+  "forwardPorts": [
+    "postgres:5432"
+  ],
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/node:1": {

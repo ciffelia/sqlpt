@@ -63,8 +63,6 @@ func WithTestDB(t *testing.T, testFunc TestFunc) {
 		}
 	}
 
-	initializeTestSchema(ctx, masterPool)
-
 	// Generate unique database name based on test path
 	testPath := fmt.Sprintf("%s/%s", t.Name(), getTestPath())
 	dbName := generateDBName(testPath)
@@ -87,57 +85,17 @@ func WithTestDB(t *testing.T, testFunc TestFunc) {
 	// Connect to test database
 	pool, err := pgxpool.NewWithConfig(ctx, testConfig)
 	if err != nil {
-		cleanupTestDatabase(ctx, masterPool, dbName)
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
 	defer pool.Close()
 
 	// Run the test
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				cleanupTestDatabase(ctx, masterPool, dbName)
-				panic(r)
-			}
-		}()
-
-		testFunc(pool)
-	}()
+	testFunc(pool)
 
 	// Cleanup test database
 	if err := cleanupTestDatabase(ctx, masterPool, dbName); err != nil {
 		t.Logf("warning: failed to cleanup test database %s: %v", dbName, err)
 	}
-}
-
-// initializeTestSchema creates the _sqlx_test schema and tables
-func initializeTestSchema(ctx context.Context, pool *pgxpool.Pool) error {
-	conn, err := pool.Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Release()
-
-	// Create schema and tables with advisory lock (similar to sqlx implementation)
-	query := `
-		SELECT pg_advisory_xact_lock(8318549251334697844);
-		
-		CREATE SCHEMA IF NOT EXISTS _sqlx_test;
-		
-		CREATE TABLE IF NOT EXISTS _sqlx_test.databases (
-			db_name text PRIMARY KEY,
-			test_path text NOT NULL,
-			created_at timestamptz NOT NULL DEFAULT now()
-		);
-		
-		CREATE INDEX IF NOT EXISTS databases_created_at 
-			ON _sqlx_test.databases(created_at);
-		
-		CREATE SEQUENCE IF NOT EXISTS _sqlx_test.database_ids;
-	`
-
-	_, err = conn.Exec(ctx, query)
-	return err
 }
 
 // generateDBName generates a unique database name based on test path (mimics sqlx logic)
@@ -169,6 +127,28 @@ func setupTestDatabase(ctx context.Context, pool *pgxpool.Pool, dbName, testPath
 	}
 	defer conn.Release()
 
+	// create the _sqlx_test schema and tables
+	query := `
+    select pg_advisory_xact_lock(32494332878806879);
+
+    create schema if not exists _sqlx_test;
+
+    create table if not exists _sqlx_test.databases (
+        db_name text primary key,
+        test_path text not null,
+        created_at timestamptz not null default now()
+    );
+
+    create index if not exists databases_created_at 
+        on _sqlx_test.databases(created_at);
+
+    create sequence if not exists _sqlx_test.database_ids;
+	`
+	_, err = conn.Exec(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to initialize test schema: %w", err)
+	}
+
 	// Clean up any existing database with the same name
 	if err := doCleanup(ctx, conn.Conn(), dbName); err != nil {
 		return fmt.Errorf("failed to cleanup existing database: %w", err)
@@ -176,14 +156,14 @@ func setupTestDatabase(ctx context.Context, pool *pgxpool.Pool, dbName, testPath
 
 	// Insert database record
 	_, err = conn.Exec(ctx,
-		"INSERT INTO _sqlx_test.databases(db_name, test_path) VALUES ($1, $2)",
+		"insert into _sqlx_test.databases(db_name, test_path) values ($1, $2)",
 		dbName, testPath)
 	if err != nil {
 		return fmt.Errorf("failed to insert database record: %w", err)
 	}
 
 	// Create the test database
-	createQuery := fmt.Sprintf("CREATE DATABASE %s", pgx.Identifier{dbName}.Sanitize())
+	createQuery := fmt.Sprintf("create database %s", pgx.Identifier{dbName}.Sanitize())
 	_, err = conn.Exec(ctx, createQuery)
 	if err != nil {
 		return fmt.Errorf("failed to create test database: %w", err)
@@ -206,16 +186,14 @@ func cleanupTestDatabase(ctx context.Context, pool *pgxpool.Pool, dbName string)
 // doCleanup performs the actual database cleanup
 func doCleanup(ctx context.Context, conn *pgx.Conn, dbName string) error {
 	// Drop the database if it exists
-	dropQuery := fmt.Sprintf("DROP DATABASE IF EXISTS %s", pgx.Identifier{dbName}.Sanitize())
+	dropQuery := fmt.Sprintf("drop database if exists %s", pgx.Identifier{dbName}.Sanitize())
 	_, err := conn.Exec(ctx, dropQuery)
 	if err != nil {
 		return fmt.Errorf("failed to drop database: %w", err)
 	}
 
 	// Remove from tracking table
-	_, err = conn.Exec(ctx,
-		"DELETE FROM _sqlx_test.databases WHERE db_name = $1",
-		dbName)
+	_, err = conn.Exec(ctx, "delete from _sqlx_test.databases where db_name = $1", dbName)
 	if err != nil {
 		return fmt.Errorf("failed to remove database record: %w", err)
 	}
@@ -228,53 +206,4 @@ func getTestPath() string {
 	// This is a simplified implementation. In a real scenario,
 	// you might want to extract more detailed path information
 	return "test"
-}
-
-// CleanupTestDatabases removes old test databases (utility function)
-func CleanupTestDatabases(ctx context.Context) (int, error) {
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		return 0, fmt.Errorf("DATABASE_URL environment variable must be set")
-	}
-
-	config, err := pgx.ParseConfig(databaseURL)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse DATABASE_URL: %w", err)
-	}
-
-	conn, err := pgx.ConnectConfig(ctx, config)
-	if err != nil {
-		return 0, fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer conn.Close(ctx)
-
-	// Get list of test databases
-	rows, err := conn.Query(ctx, "SELECT db_name FROM _sqlx_test.databases")
-	if err != nil {
-		return 0, fmt.Errorf("failed to query test databases: %w", err)
-	}
-	defer rows.Close()
-
-	var dbNames []string
-	for rows.Next() {
-		var dbName string
-		if err := rows.Scan(&dbName); err != nil {
-			return 0, fmt.Errorf("failed to scan database name: %w", err)
-		}
-		dbNames = append(dbNames, dbName)
-	}
-
-	if err := rows.Err(); err != nil {
-		return 0, fmt.Errorf("error iterating rows: %w", err)
-	}
-
-	// Delete databases
-	deletedCount := 0
-	for _, dbName := range dbNames {
-		if err := doCleanup(ctx, conn, dbName); err == nil {
-			deletedCount++
-		}
-	}
-
-	return deletedCount, nil
 }

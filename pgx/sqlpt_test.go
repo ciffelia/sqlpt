@@ -1,10 +1,10 @@
-package sqlpt_test
+package pgx_test
 
 import (
 	"sync"
 	"testing"
 
-	"github.com/ciffelia/sqlpt"
+	sqlpt "github.com/ciffelia/sqlpt/pgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

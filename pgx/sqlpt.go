@@ -1,18 +1,14 @@
-package sqlpt
+package pgx
 
 import (
 	"context"
-	"crypto/sha512"
-	"encoding/base64"
 	"fmt"
-	"log"
 	"os"
-	"runtime"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/ciffelia/sqlpt/internal"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -66,8 +62,8 @@ func WithTestDB(t *testing.T, testFunc TestFunc) {
 	}
 
 	// Generate unique database name based on test path
-	testPath := fmt.Sprintf("%s/%s", getTestFuncId(), t.Name())
-	dbName := generateDBName(testPath)
+	testPath := fmt.Sprintf("%s/%s", internal.GetTestFuncId(), t.Name())
+	dbName := internal.GenerateDBName(testPath)
 
 	// Setup test database
 	if err := setupTestDatabase(ctx, masterPool, dbName, testPath); err != nil {
@@ -110,22 +106,6 @@ func WithTestDB(t *testing.T, testFunc TestFunc) {
 	if err := cleanupTestDatabase(ctx, masterPool, dbName); err != nil {
 		t.Logf("warning: failed to cleanup test database %s: %v", dbName, err)
 	}
-}
-
-// generateDBName generates a unique database name based on test path
-func generateDBName(testPath string) string {
-	println(testPath)
-	hash := sha512.Sum512([]byte(testPath))
-
-	encoded := base64.URLEncoding.EncodeToString(hash[:39])
-	dbName := fmt.Sprintf("_sqlx_test_%s", encoded)
-	dbName = strings.ReplaceAll(dbName, "-", "_")
-
-	if len(dbName) != 63 {
-		log.Fatalf("generated database name '%s' is not 63 characters long, got %d", dbName, len(dbName))
-	}
-
-	return dbName
 }
 
 // setupTestDatabase creates a new test database
@@ -208,24 +188,4 @@ func doCleanup(ctx context.Context, conn *pgx.Conn, dbName string) error {
 	}
 
 	return nil
-}
-
-// getTestFuncId returns a test function identifier
-func getTestFuncId() string {
-	var prevFuncName string
-
-	for i := 1; ; i++ {
-		pc, _, _, ok := runtime.Caller(i)
-		if !ok {
-			break
-		}
-
-		funcName := runtime.FuncForPC(pc).Name()
-		if funcName == "testing.tRunner" {
-			break
-		}
-		prevFuncName = funcName
-	}
-
-	return prevFuncName
 }

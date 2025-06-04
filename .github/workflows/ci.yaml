@@ -53,7 +53,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
     env:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@v4
 

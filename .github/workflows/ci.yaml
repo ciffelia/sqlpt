@@ -43,6 +43,17 @@ jobs:
 
   go-test:
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17.5-alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+    env:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@v4
 

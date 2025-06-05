@@ -1,4 +1,4 @@
-package pgx_test
+package sqlpt_test
 
 import (
 	"sync"

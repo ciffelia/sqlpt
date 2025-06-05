@@ -24,8 +24,8 @@ func GenerateDBName(testPath string) string {
 	return dbName
 }
 
-// GetTestFuncId returns a test function identifier
-func GetTestFuncId() string {
+// GetTestFuncName returns the name of the test function that is currently running, including the package path
+func GetTestFuncName() string {
 	var prevFuncName string
 
 	for i := 1; ; i++ {

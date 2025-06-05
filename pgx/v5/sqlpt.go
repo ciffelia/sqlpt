@@ -28,12 +28,12 @@ func Run(t *testing.T, testFunc TestFunc) {
 
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
-		t.Fatalf("DATABASE_URL environment variable must be set")
+		panic("DATABASE_URL environment variable must be set")
 	}
 
 	masterConf, err := pgxpool.ParseConfig(url)
 	if err != nil {
-		t.Fatalf("failed to parse DATABASE_URL: %v", err)
+		panic(fmt.Errorf("failed to parse DATABASE_URL: %w", err))
 	}
 
 	// Postgres' normal connection limit is 100 plus 3 superuser connections
@@ -52,12 +52,12 @@ func Run(t *testing.T, testFunc TestFunc) {
 		previouslyInitialized = false
 	})
 	if masterPoolErr != nil {
-		t.Fatalf("failed to initialize master pool: %v", masterPoolErr)
+		panic(fmt.Errorf("failed to initialize master pool: %w", masterPoolErr))
 	}
 	if previouslyInitialized {
 		if masterPool.Config().ConnString() != masterConf.ConnString() {
-			t.Fatalf("DATABASE_URL changed at runtime, previous: %s, current: %s",
-				masterPool.Config().ConnString(), masterConf.ConnString())
+			panic(fmt.Sprintf("DATABASE_URL changed at runtime, previous: %s, current: %s",
+				masterPool.Config().ConnString(), masterConf.ConnString()))
 		}
 	}
 
@@ -68,7 +68,7 @@ func Run(t *testing.T, testFunc TestFunc) {
 
 	// Setup test database
 	if err := setupTestDatabase(ctx, masterPool, dbName, testPath); err != nil {
-		t.Fatalf("failed to setup test database: %v", err)
+		panic(fmt.Errorf("failed to setup test database: %w", err))
 	}
 
 	// Create connection config for test database
@@ -84,7 +84,7 @@ func Run(t *testing.T, testFunc TestFunc) {
 	// Connect to test database
 	pool, err := pgxpool.NewWithConfig(ctx, testConfig)
 	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
+		panic(fmt.Errorf("failed to connect to test database: %w", err))
 	}
 	defer func() {
 		done := make(chan struct{})

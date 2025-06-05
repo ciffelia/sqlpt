@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	sqlpt "github.com/ciffelia/sqlpt/pgx"
+	sqlpt "github.com/ciffelia/sqlpt/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

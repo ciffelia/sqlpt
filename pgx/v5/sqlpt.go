@@ -117,22 +117,22 @@ func setupTestDatabase(ctx context.Context, pool *pgxpool.Pool, dbName, testPath
 	}
 	defer conn.Release()
 
-	// create the _sqlx_test schema and tables
+	// create the _sqlpt schema and tables
 	query := `
     select pg_advisory_xact_lock(32494332878806879);
 
-    create schema if not exists _sqlx_test;
+    create schema if not exists _sqlpt;
 
-    create table if not exists _sqlx_test.databases (
+    create table if not exists _sqlpt.databases (
         db_name text primary key,
         test_path text not null,
         created_at timestamptz not null default now()
     );
 
     create index if not exists databases_created_at 
-        on _sqlx_test.databases(created_at);
+        on _sqlpt.databases(created_at);
 
-    create sequence if not exists _sqlx_test.database_ids;
+    create sequence if not exists _sqlpt.database_ids;
 	`
 	_, err = conn.Exec(ctx, query)
 	if err != nil {
@@ -146,7 +146,7 @@ func setupTestDatabase(ctx context.Context, pool *pgxpool.Pool, dbName, testPath
 
 	// Insert database record
 	_, err = conn.Exec(ctx,
-		"insert into _sqlx_test.databases(db_name, test_path) values ($1, $2)",
+		"insert into _sqlpt.databases(db_name, test_path) values ($1, $2)",
 		dbName, testPath)
 	if err != nil {
 		return fmt.Errorf("failed to insert database record: %w", err)
@@ -183,7 +183,7 @@ func doCleanup(ctx context.Context, conn *pgx.Conn, dbName string) error {
 	}
 
 	// Remove from tracking table
-	_, err = conn.Exec(ctx, "delete from _sqlx_test.databases where db_name = $1", dbName)
+	_, err = conn.Exec(ctx, "delete from _sqlpt.databases where db_name = $1", dbName)
 	if err != nil {
 		return fmt.Errorf("failed to remove database record: %w", err)
 	}

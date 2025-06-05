@@ -14,8 +14,8 @@ func GenerateDBName(testPath string) string {
 	println(testPath)
 	hash := sha512.Sum512([]byte(testPath))
 
-	encoded := base64.URLEncoding.EncodeToString(hash[:39])
-	dbName := fmt.Sprintf("_sqlx_test_%s", encoded)
+	encoded := base64.URLEncoding.EncodeToString(hash[:42])
+	dbName := fmt.Sprintf("_sqlpt_%s", encoded)
 	dbName = strings.ReplaceAll(dbName, "-", "_")
 
 	if len(dbName) != 63 {

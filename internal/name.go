@@ -11,7 +11,6 @@ import (
 
 // GenerateDBName generates a unique database name based on test function and test name
 func GenerateDBName(testPath string) string {
-	println(testPath)
 	hash := sha512.Sum512([]byte(testPath))
 
 	encoded := base64.URLEncoding.EncodeToString(hash[:42])

@@ -7,9 +7,10 @@ import (
 	"log"
 	"runtime"
 	"strings"
+	"testing"
 )
 
-// GenerateDBName generates a unique database name based on test function and test name
+// GenerateDBName generates a unique database name based on the test path
 func GenerateDBName(testPath string) string {
 	hash := sha512.Sum512([]byte(testPath))
 
@@ -24,8 +25,15 @@ func GenerateDBName(testPath string) string {
 	return dbName
 }
 
-// GetTestFuncName returns the name of the test function that is currently running, including the package path
-func GetTestFuncName() string {
+// GetTestPath returns a unique path for the current test based on the function name and test name
+func GetTestPath(t *testing.T) string {
+	funcName := getTestFuncName()
+	testName := t.Name()
+	return fmt.Sprintf("%s/%s", funcName, testName)
+}
+
+// getTestFuncName returns the name of the test function that is currently running, including the package path
+func getTestFuncName() string {
 	var prevFuncName string
 
 	for i := 1; ; i++ {

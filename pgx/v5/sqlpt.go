@@ -62,7 +62,7 @@ func Run(t *testing.T, testFunc TestFunc) {
 	}
 
 	// Generate unique database name based on test path
-	testPath := fmt.Sprintf("%s/%s", internal.GetTestFuncName(), t.Name())
+	testPath := internal.GetTestPath(t)
 	dbName := internal.GenerateDBName(testPath)
 	t.Logf("Using test database: %s", dbName)
 

@@ -16,7 +16,7 @@ func TestDifferentDatabase(t *testing.T) {
 
 	wg.Add(2)
 	t.Run("test1", func(t *testing.T) {
-		sqlpt.WithTestDB(t, func(pool *pgxpool.Pool) {
+		sqlpt.Run(t, func(pool *pgxpool.Pool) {
 			err := pool.QueryRow(ctx, "SELECT current_database()").Scan(&name1)
 			if err != nil {
 				t.Fatalf("failed to get current database name: %v", err)
@@ -25,7 +25,7 @@ func TestDifferentDatabase(t *testing.T) {
 		})
 	})
 	t.Run("test2", func(t *testing.T) {
-		sqlpt.WithTestDB(t, func(pool *pgxpool.Pool) {
+		sqlpt.Run(t, func(pool *pgxpool.Pool) {
 			err := pool.QueryRow(ctx, "SELECT current_database()").Scan(&name2)
 			if err != nil {
 				t.Fatalf("failed to get current database name: %v", err)
@@ -43,7 +43,7 @@ func TestDifferentDatabase(t *testing.T) {
 func TestCreateAndQueryTable(t *testing.T) {
 	ctx := t.Context()
 
-	sqlpt.WithTestDB(t, func(pool *pgxpool.Pool) {
+	sqlpt.Run(t, func(pool *pgxpool.Pool) {
 		// Create a test table
 		_, err := pool.Exec(ctx, `
 			CREATE TABLE users (
@@ -89,7 +89,7 @@ func TestConcurrentDatabases(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
 
-		sqlpt.WithTestDB(t, func(pool *pgxpool.Pool) {
+		sqlpt.Run(t, func(pool *pgxpool.Pool) {
 			_, err := pool.Exec(ctx, "CREATE TABLE test1_table (id INT)")
 			if err != nil {
 				t.Fatalf("failed to create test1_table: %v", err)
@@ -113,7 +113,7 @@ func TestConcurrentDatabases(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
 
-		sqlpt.WithTestDB(t, func(pool *pgxpool.Pool) {
+		sqlpt.Run(t, func(pool *pgxpool.Pool) {
 			// Verify that test1_table does not exist in this separate database
 			var exists bool
 			err := pool.QueryRow(ctx,

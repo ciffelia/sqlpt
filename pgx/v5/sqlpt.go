@@ -22,8 +22,8 @@ var (
 	masterPoolErr  error
 )
 
-// WithTestDB creates an isolated test database and runs the test function
-func WithTestDB(t *testing.T, testFunc TestFunc) {
+// Run creates an isolated test database and runs the test function
+func Run(t *testing.T, testFunc TestFunc) {
 	ctx := t.Context()
 
 	url := os.Getenv("DATABASE_URL")

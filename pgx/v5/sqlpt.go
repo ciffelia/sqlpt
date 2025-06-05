@@ -64,6 +64,7 @@ func WithTestDB(t *testing.T, testFunc TestFunc) {
 	// Generate unique database name based on test path
 	testPath := fmt.Sprintf("%s/%s", internal.GetTestFuncId(), t.Name())
 	dbName := internal.GenerateDBName(testPath)
+	t.Logf("Using test database: %s", dbName)
 
 	// Setup test database
 	if err := setupTestDatabase(ctx, masterPool, dbName, testPath); err != nil {
